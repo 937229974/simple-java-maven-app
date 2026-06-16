@@ -27,5 +27,25 @@ pipeline {
                 sh './jenkins/scripts/deliver.sh' 
             }
         }
+        stage('Deploy') {
+            environment {
+                REMOTE_USER = 'deploy'
+                REMOTE_HOST = 'your-server.com'
+                REMOTE_DIR  = '/opt/my-app'
+                JAR_FILE    = 'target/my-app-1.0-SNAPSHOT.jar'
+            }
+            steps {
+                sshagent(['remote-server-ssh-key']) {
+                    sh """
+                        scp -o StrictHostKeyChecking=no ${JAR_FILE} ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/
+                        ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} "
+                            cd ${REMOTE_DIR} && \\
+                            systemctl stop my-app && \\
+                            nohup java -jar my-app-1.0-SNAPSHOT.jar > app.log 2>&1 &
+                        "
+                    """
+                }
+            }
+        }
     }
 }
